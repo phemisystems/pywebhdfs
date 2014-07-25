@@ -21,7 +21,8 @@ setup(
         "tox"
     ],
     install_requires=[
-        "requests"
+        "requests",
+        "tornado"
     ],
     test_suite='nose.collector',
     zip_safe=False,
