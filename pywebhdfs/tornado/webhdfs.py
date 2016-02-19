@@ -17,7 +17,7 @@ class PyWebHdfsClient(object):
     >>> from pywebhdfs.tornado.webhdfs import PyWebHdfsClient
     """
 
-    def __init__(self, host='localhost', port='50070', user_name=None):
+    def __init__(self, host='localhost', port='50070', user_name=None, **kwargs):
         """
         Create a new client for interacting with WebHDFS
 
@@ -31,10 +31,18 @@ class PyWebHdfsClient(object):
         self.host = host
         self.port = port
         self.user_name = user_name
+        self.request_headers = dict()
 
         # create base uri to be used in request operations
         self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
             host=self.host, port=self.port)
+
+        # Handle special arguments like those for Kerberos.
+        for key, val in kwargs.iteritems():
+            if key == "kerberos" and val:
+                ticket = self._acquire_kerberos_context("HTTP@dev",
+                        "/home/ubuntu/agile/test.keytab")
+                self.request_headers['Authorization'] = ticket
 
         # create our asynchronous client
         self.http_client = httpclient.AsyncHTTPClient()
@@ -97,9 +105,9 @@ class PyWebHdfsClient(object):
         # initial response from the namenode and make the CREATE request
         # to the datanode
         uri = init_response.headers['location']
+        self.request_headers['content-type'] = 'application/octet-stream'
         request = httpclient.HTTPRequest(
-            uri, method='PUT', body=file_data,
-            headers={'content-type': 'application/octet-stream'})
+            uri, method='PUT', body=file_data, self.request_headers)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.CREATED:
@@ -160,9 +168,9 @@ class PyWebHdfsClient(object):
         # initial response from the namenode and make the APPEND request
         # to the datanode
         uri = init_response.headers['location']
+        self.request_headers['content-type'] = 'application/octet-stream'
         request = httpclient.HTTPRequest(
-            uri, method='POST', body=file_data,
-            headers={'content-type': 'application/octet-stream'})
+            uri, method='POST', body=file_data, self.request_headers)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -274,6 +282,7 @@ class PyWebHdfsClient(object):
             _raise_pywebhdfs_exception(response.code, response.body)
 
         raise Return(True)
+
 
     @coroutine
     def delete_file_dir(self, path, recursive=False):
@@ -457,6 +466,29 @@ class PyWebHdfsClient(object):
             auth=auth_param)
 
         return uri
+
+
+    @static_method
+    def _acquire_kerberos_context(krb_server, keytab):
+        # All the credentials we'll ever need. HARDCODED!!!.
+        kerberos_principal = "user/host"
+        kerberos_realm = "test.example.com"
+        keytab_filepath = keytab
+
+        # FIXME Temporary hack for debugging. We need to be sure that we have
+        # a valid ticket before trying to authenticate against Kerberos.
+        kinit = Popen(["kinit", "-k", "-t", keytab_filepath,
+                "%s@%s" % (kerberos_principal, kerberos_realm)],
+                stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        kinit.wait()
+        if kinit.stderr.readlines():
+            return None
+
+        _, krb_context = kerberos.authGSSClientInit(krb_server)
+        kerberos.authGSSClientStep(krb_context, "")
+        ticket = kerberos.authGSSClientResponse(krb_context)
+
+        return ticket
 
 
 def _raise_pywebhdfs_exception(resp_code, message=None):
