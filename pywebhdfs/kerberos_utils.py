@@ -22,7 +22,7 @@ class KerberosContextManager(object):
         self.krb_conn_settings = krb_conn_settings
         self.use_keytab = use_keytab
 
-    def refresh_kerberos_tgt(self, aux_args=None):
+    def refresh_kerberos_ccache(self, aux_args=None):
         credentials = '{0}@{1}'.format(self.krb_conn_settings['principal'],
                                        self.krb_conn_settings['realm'])
 
@@ -36,7 +36,7 @@ class KerberosContextManager(object):
                 kinit_cmd.extend(['-k', '-t', keytab])
 
                 err_msg = subprocess.check_output(*kinit_cmd, stderr=subprocess.STDOUT)
-                if err_msg:
+                if err_msg.rstrip('\r\n'):
                     return False, err_msg
             else:
                 kinit = subprocess.Popen(*kinit_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -49,11 +49,13 @@ class KerberosContextManager(object):
 
         return True, ""
 
-    def acquire_kerberos_context(self):
+    def acquire_kerberos_ticket(self):
+        self.refresh_kerberos_ccache()
+
         krb_server = self.krb_conn_settings['server']
         _, krb_context = kerberos.authGSSClientInit(krb_server)
 
-        kerberos.authGSSClientStep(krb_context, "")
+        kerberos.authGSSClientStep(krb_context, '')
         ticket = kerberos.authGSSClientResponse(krb_context)
 
-        return ticket
+        return 'Negotiate {0}'.format(ticket)
