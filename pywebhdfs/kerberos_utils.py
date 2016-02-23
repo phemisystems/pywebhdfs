@@ -1,18 +1,18 @@
-import kerberos
+import kerberos, krbcontext
 import os.path
 import subprocess
 
 
 class KerberosContextManager(object):
-    def __init__(self, krb_conn_settings, use_keytab=True):
+    def __init__(self, krb_conn_settings, using_keytab=True):
         for param in ['principal', 'realm', 'server']:
             if param not in krb_conn_settings:
                 raise ValueError('Missing parameter {0}'.format(param))
 
-        if use_keytab:
-            if 'keytab' not in krb_conn_settings:
+        if using_keytab:
+            if 'keytab_file' not in krb_conn_settings:
                 raise ValueError('Failed to specify path to keytab')
-            keytab = krb_conn_settings['keytab']
+            keytab = krb_conn_settings['keytab_file']
             if not os.path.isfile(keytab):
                 raise ValueError('Keytab does not exist')
         else:
@@ -20,39 +20,37 @@ class KerberosContextManager(object):
                 raise ValueError('Password is required if not using keytab')
 
         self.krb_conn_settings = krb_conn_settings
-        self.use_keytab = use_keytab
+        self.using_keytab = using_keytab
 
     def refresh_kerberos_ccache(self, aux_args=None):
-        credentials = '{0}@{1}'.format(self.krb_conn_settings['principal'],
+        if self.using_keytab:
+            krbcontext.krbcontext(principal=self.krb_conn_settings['principal'],
+                                  using_keytab=self.using_keytab,
+                                  keytab_file=self.krb_conn_settings['keytab_file'],
+                                  ccache_file=self.krb_conn_settings['ccache_file'])
+        else:
+            credentials = '{0}@{1}'.format(self.krb_conn_settings['principal'],
                                        self.krb_conn_settings['realm'])
 
-        kinit_cmd = ['kinit', credentials]
-        if aux_args:
-            kinit_cmd.extend(aux_args)
+            kinit_cmd = ['kinit', credentials]
+            if aux_args:
+                kinit_cmd.extend(aux_args)
 
-        try:
-            if self.use_keytab:
-                keytab = self.krb_conn_settings['keytab']
-                kinit_cmd.extend(['-k', '-t', keytab])
-
-                err_msg = subprocess.check_output(*kinit_cmd, stderr=subprocess.STDOUT)
-                if err_msg.rstrip('\r\n'):
-                    return False, err_msg
-            else:
+            try:
                 kinit = subprocess.Popen(*kinit_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
                 kinit.stdin.write('{0}\n'.format(self.krb_conn_settings['passwd']))
                 kinit.wait()
-        except subprocess.CalledProcessError as err:
-            return False, err.output
-        except OSError as err:
-            return False, err.strerr
+            except subprocess.CalledProcessError as badcall:
+                return False, badcall.output
+            except OSError as oserr:
+                return False, oserr.strerr
 
         return True, ""
 
     def acquire_kerberos_ticket(self):
         self.refresh_kerberos_ccache()
 
-        krb_server = self.krb_conn_settings['server']
+        krb_server = 'HTTP@{0}'.format(self.krb_conn_settings['server'])
         _, krb_context = kerberos.authGSSClientInit(krb_server)
 
         kerberos.authGSSClientStep(krb_context, '')
