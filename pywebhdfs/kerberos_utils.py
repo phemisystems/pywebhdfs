@@ -28,7 +28,7 @@ class KerberosContextManager(object):
 
     def _lookup_krbtgt_times(self, context, principal, ccache):
         credential_times = namedtuple('CredentialTime',
-                                     'auth_time valid_starting expiry_date renew_until')
+                                      'auth_time valid_starting expiry_date renew_until')
 
         ticket_granting_ticket = 'krbtgt/{0}@{0}'.format(principal.realm)
         tgt_principal = krbV.Principal(name=ticket_granting_ticket, context=context)
@@ -67,7 +67,7 @@ class KerberosContextManager(object):
                 time_remaining = credential_times.expiry_date - current_date
                 if time_remaining < timedelta(minutes=5):
                     refresh_required = True
-            except krbV.Krb5Error as err:
+            except krbV.Krb5Error:
                 refresh_required = True
 
         if refresh_required:
@@ -78,10 +78,16 @@ class KerberosContextManager(object):
                     keytab = self.krb_conn_settings['keytab']
                     kinit_cmd.extend(['-k', '-t', keytab])
 
-                    kinit_cmd = subprocess.Popen(*kinit_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                    kinit_cmd = subprocess.Popen(*kinit_cmd,
+                                                 stdin=subprocess.PIPE,
+                                                 stdout=subprocess.PIPE,
+                                                 stderr=subprocess.PIPE)
                     kinit_cmd.wait()
                 else:
-                    kinit_cmd = subprocess.Popen(*kinit_cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+                    kinit_cmd = subprocess.Popen(*kinit_cmd,
+                                                 stdin=subprocess.PIPE,
+                                                 stdout=subprocess.PIPE,
+                                                 stderr=subprocess.PIPE)
                     kinit_cmd.stdin.write('{0}\n'.format(self.krb_conn_settings['passwd']))
                     kinit_cmd.wait()
             except subprocess.CalledProcessError as badcall:
