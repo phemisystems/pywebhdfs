@@ -56,8 +56,6 @@ class KerberosContextManager(object):
             krb_ccache = krb_context.default_ccache()
             krb_principal = krbV.Principal(name=self.krb_conn_settings['principal'],
                                            context=krb_context)
-            krb_keytab = krbV.Keytab(name=self.krb_conn_settings['keytab_file'],
-                                     context=krb_context)
 
             try:
                 credential_times = self._lookup_krbtgt_times(context=krb_context,
