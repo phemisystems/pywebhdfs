@@ -28,18 +28,21 @@ class KerberosContextManager(object):
 
     @staticmethod
     def _lookup_krbtgt_times(context, principal, ccache):
-        credential_times = namedtuple('CredentialTime', 'auth_time valid_starting expiry_date renew_until')
+        credential_times = namedtuple('CredentialTime',
+                                      'auth_time valid_starting expiry_date renew_until')
         ticket_granting_ticket = 'krbtgt/{0}@{0}'.format(principal.realm)
 
         tgt_principal = krbV.Principal(ticket_granting_ticket, context)
 
-        credentials = (principal, tgt_principal, (0, None), (0, 0, 0, 0), None, None, None, None, None, None)
+        credentials = (principal, tgt_principal, (0, None), (0, 0, 0, 0),
+                       None, None, None, None, None, None)
         result = ccache.get_credentials(credentials, krbV.KRB5_GC_CACHED, 0)
 
         return credential_times._make(datetime.fromtimestamp(t) for t in result[3])
 
     def _build_kinit_cmd(self, aux_args):
-        credentials = '{0}@{1}'.format(self.krb_conn_settings['principal'], self.krb_conn_settings['realm'])
+        credentials = '{0}@{1}'.format(self.krb_conn_settings['principal'],
+                                       self.krb_conn_settings['realm'])
 
         kinit_cmd = ['kinit', credentials]
         if aux_args:
@@ -56,7 +59,10 @@ class KerberosContextManager(object):
             krb_principal = krbV.Principal(self.krb_conn_settings['principal'], krb_context)
 
             try:
-                credential_times = self._lookup_krbtgt_times(krb_context, krb_principal, krb_ccache)
+                credential_times = self._lookup_krbtgt_times(krb_context,
+                                                             krb_principal,
+                                                             krb_ccache)
+
                 current_date = datetime.now()
                 time_remaining = credential_times.expiry_date - current_date
                 if time_remaining < timedelta(minutes=5):
@@ -66,19 +72,17 @@ class KerberosContextManager(object):
 
         if refresh_required:
             kinit_cmd = self._build_kinit_cmd(aux_args)
-
             try:
                 if self.using_keytab:
-                    keytab = self.krb_conn_settings['keytab']
+                    keytab = self.krb_conn_settings['keytab_file']
                     kinit_cmd.extend(['-k', '-t', keytab])
-
-                    kinit_cmd = subprocess.Popen(*kinit_cmd,
+                    kinit_cmd = subprocess.Popen(kinit_cmd,
                                                  stdin=subprocess.PIPE,
                                                  stdout=subprocess.PIPE,
                                                  stderr=subprocess.PIPE)
                     kinit_cmd.wait()
                 else:
-                    kinit_cmd = subprocess.Popen(*kinit_cmd,
+                    kinit_cmd = subprocess.Popen(kinit_cmd,
                                                  stdin=subprocess.PIPE,
                                                  stdout=subprocess.PIPE,
                                                  stderr=subprocess.PIPE)
@@ -95,7 +99,8 @@ class KerberosContextManager(object):
         self.refresh_kerberos_ccache()
 
         krb_server = 'HTTP@{0}'.format(self.krb_conn_settings['server'])
-        _, krb_context = kerberos.authGSSClientInit(service=krb_server, principal=self.krb_conn_settings['principal'])
+        _, krb_context = kerberos.authGSSClientInit(service=krb_server,
+                                                    principal=self.krb_conn_settings['principal'])
 
         kerberos.authGSSClientStep(krb_context, '')
         ticket = kerberos.authGSSClientResponse(krb_context)
