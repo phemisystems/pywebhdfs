@@ -239,7 +239,7 @@ class PyWebHdfsClient(object):
 
         return True
 
-    def rename_file_dir(self, path, destination_path):
+    def rename_file_dir(self, path, destination_path, **kwargs):
         """
         Rename an existing directory or file on HDFS
 
@@ -262,8 +262,10 @@ class PyWebHdfsClient(object):
         if self.krb_instance:
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
 
+        optional_args = kwargs
         uri = self._create_uri(path, operations.RENAME,
-                               destination=destination_path)
+                               destination=destination_path,
+                               **optional_args)
 
         response = requests.put(uri, allow_redirects=True, headers=headers)
 
@@ -272,7 +274,7 @@ class PyWebHdfsClient(object):
 
         return True
 
-    def delete_file_dir(self, path, recursive=False):
+    def delete_file_dir(self, path, recursive=False, **kwargs):
         """
         Delete an existing file or directory from HDFS
 
@@ -299,7 +301,8 @@ class PyWebHdfsClient(object):
         if self.krb_instance:
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
 
-        uri = self._create_uri(path, operations.DELETE, recursive=recursive)
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.DELETE, recursive=recursive, **optional_args)
         response = requests.delete(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
@@ -307,7 +310,7 @@ class PyWebHdfsClient(object):
 
         return True
 
-    def get_file_dir_status(self, path):
+    def get_file_dir_status(self, path, **kwargs):
         """
         Get the file_status of a single file or directory on HDFS
 
@@ -361,7 +364,8 @@ class PyWebHdfsClient(object):
         if self.krb_instance:
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
 
-        uri = self._create_uri(path, operations.GETFILESTATUS)
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.GETFILESTATUS, **optional_args)
         response = requests.get(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
@@ -369,7 +373,7 @@ class PyWebHdfsClient(object):
 
         return response.json()
 
-    def list_dir(self, path):
+    def list_dir(self, path, **kwargs):
         """
         Get a list of file_status for all files and directories
         inside an HDFS directory
@@ -421,7 +425,8 @@ class PyWebHdfsClient(object):
         if self.krb_instance:
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
 
-        uri = self._create_uri(path, operations.LISTSTATUS)
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.LISTSTATUS, **optional_args)
         response = requests.get(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
