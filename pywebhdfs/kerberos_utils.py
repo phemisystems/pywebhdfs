@@ -34,6 +34,17 @@ class KerberosContextManager(object):
 
         tgt_principal = krbV.Principal(ticket_granting_ticket, context)
 
+        # Credentials tuple elements:
+        #   user principal (including instance qualifiers)
+        #   tgt principal (i.e. 'krbtgt/<realm>@<realm>')
+        #   keyblock: (enc_type, contents)
+        #   times: (auth_time, valid_starting, expiry_date, renew_until)
+        #   is key
+        #   ticket flags
+        #   addrlist (address list to search)
+        #   ticket data
+        #   second ticket data
+        #   active directory list
         credentials = (principal, tgt_principal, (0, None), (0, 0, 0, 0),
                        None, None, None, None, None, None)
         result = ccache.get_credentials(credentials, krbV.KRB5_GC_CACHED, 0)
@@ -50,27 +61,29 @@ class KerberosContextManager(object):
 
         return kinit_cmd
 
-    def refresh_kerberos_ccache(self, aux_args=None):
+    def _is_kerberos_ccache_refresh_required(self):
         refresh_required = False
 
-        if self.using_keytab:
-            krb_context = krbV.default_context()
-            krb_ccache = krb_context.default_ccache()
-            krb_principal = krbV.Principal(self.krb_conn_settings['principal'], krb_context)
+        krb_context = krbV.default_context()
+        krb_ccache = krb_context.default_ccache()
+        krb_principal = krbV.Principal(self.krb_conn_settings['principal'], krb_context)
 
-            try:
-                credential_times = self._lookup_krbtgt_times(krb_context,
-                                                             krb_principal,
-                                                             krb_ccache)
+        try:
+            credential_times = self._lookup_krbtgt_times(krb_context,
+                                                         krb_principal,
+                                                         krb_ccache)
 
-                current_date = datetime.now()
-                time_remaining = credential_times.expiry_date - current_date
-                if time_remaining < timedelta(minutes=5):
-                    refresh_required = True
-            except krbV.Krb5Error:
+            current_date = datetime.now()
+            time_remaining = credential_times.expiry_date - current_date
+            if time_remaining < timedelta(minutes=5):
                 refresh_required = True
+        except krbV.Krb5Error:
+            refresh_required = True
 
-        if refresh_required:
+        return refresh_required
+
+    def refresh_kerberos_ccache(self, aux_args=None):
+        if self._is_kerberos_ccache_refresh_required():
             kinit_cmd = self._build_kinit_cmd(aux_args)
             try:
                 if self.using_keytab:
