@@ -14,7 +14,7 @@ class PyWebHdfsClient(object):
     >>> from pywebhdfs.webhdfs import PyWebHdfsClient
     """
 
-    def __init__(self, host='localhost', port='50070', user_name=None):
+    def __init__(self, host='localhost', port='50070', user_name=None, krb_instance=None):
         """
         Create a new client for interacting with WebHDFS
 
@@ -28,6 +28,7 @@ class PyWebHdfsClient(object):
         self.host = host
         self.port = port
         self.user_name = user_name
+        self.krb_instance = krb_instance
 
         # create base uri to be used in request operations
         self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
@@ -71,10 +72,14 @@ class PyWebHdfsClient(object):
         WebHDFS documentation
         """
 
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
         # make the initial CREATE call to the HDFS namenode
         optional_args = kwargs
         uri = self._create_uri(path, operations.CREATE, **optional_args)
-        init_response = requests.put(uri, allow_redirects=False)
+        init_response = requests.put(uri, allow_redirects=False, headers=headers)
 
         if not init_response.status_code == httplib.TEMPORARY_REDIRECT:
             _raise_pywebhdfs_exception(
@@ -84,9 +89,12 @@ class PyWebHdfsClient(object):
         # initial response from the namenode and make the CREATE request
         # to the datanode
         uri = init_response.headers['location']
-        response = requests.put(
-            uri, data=file_data,
-            headers={'content-type': 'application/octet-stream'})
+        headers['Content-Type'] = 'application/octet-stream'
+        # NOTE! We need to acquire a new ticket otherwise Kerberos will suspect a replay
+        # and reject our next request
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+        response = requests.put(uri, data=file_data, headers=headers)
 
         if not response.status_code == httplib.CREATED:
             _raise_pywebhdfs_exception(response.status_code, response.content)
@@ -126,10 +134,14 @@ class PyWebHdfsClient(object):
         Append is not supported in Hadoop 1.x
         """
 
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
         # make the initial APPEND call to the HDFS namenode
         optional_args = kwargs
         uri = self._create_uri(path, operations.APPEND, **optional_args)
-        init_response = requests.post(uri, allow_redirects=False)
+        init_response = requests.post(uri, allow_redirects=False, headers=headers)
 
         if not init_response.status_code == httplib.TEMPORARY_REDIRECT:
             _raise_pywebhdfs_exception(
@@ -139,9 +151,12 @@ class PyWebHdfsClient(object):
         # initial response from the namenode and make the APPEND request
         # to the datanode
         uri = init_response.headers['location']
-        response = requests.post(
-            uri, data=file_data,
-            headers={'content-type': 'application/octet-stream'})
+        headers['Content-Type'] = 'application/octet-stream'
+        # NOTE! We need to acquire a new ticket otherwise Kerberos will suspect a replay
+        # and reject our next request
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+        response = requests.post(uri, data=file_data, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
@@ -173,10 +188,14 @@ class PyWebHdfsClient(object):
         01010101010101010101010101010101
         """
 
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
         optional_args = kwargs
         uri = self._create_uri(path, operations.OPEN, **optional_args)
 
-        response = requests.get(uri, allow_redirects=True)
+        response = requests.get(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
@@ -206,17 +225,21 @@ class PyWebHdfsClient(object):
         >>> hdfs.make_dir(my_dir, permission=755)
         """
 
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
         optional_args = kwargs
         uri = self._create_uri(path, operations.MKDIRS, **optional_args)
 
-        response = requests.put(uri, allow_redirects=True)
+        response = requests.put(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
 
         return True
 
-    def rename_file_dir(self, path, destination_path):
+    def rename_file_dir(self, path, destination_path, **kwargs):
         """
         Rename an existing directory or file on HDFS
 
@@ -235,17 +258,23 @@ class PyWebHdfsClient(object):
         >>> hdfs.rename_file_dir(current_dir, destination_dir)
         """
 
-        uri = self._create_uri(path, operations.RENAME,
-                               destination=destination_path)
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
 
-        response = requests.put(uri, allow_redirects=True)
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.RENAME,
+                               destination=destination_path,
+                               **optional_args)
+
+        response = requests.put(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
 
         return True
 
-    def delete_file_dir(self, path, recursive=False):
+    def delete_file_dir(self, path, recursive=False, **kwargs):
         """
         Delete an existing file or directory from HDFS
 
@@ -268,15 +297,20 @@ class PyWebHdfsClient(object):
         >>> hdfs.delete_file_dir(my_file, recursive=True)
         """
 
-        uri = self._create_uri(path, operations.DELETE, recursive=recursive)
-        response = requests.delete(uri, allow_redirects=True)
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.DELETE, recursive=recursive, **optional_args)
+        response = requests.delete(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
 
         return True
 
-    def get_file_dir_status(self, path):
+    def get_file_dir_status(self, path, **kwargs):
         """
         Get the file_status of a single file or directory on HDFS
 
@@ -326,15 +360,20 @@ class PyWebHdfsClient(object):
         }
         """
 
-        uri = self._create_uri(path, operations.GETFILESTATUS)
-        response = requests.get(uri, allow_redirects=True)
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.GETFILESTATUS, **optional_args)
+        response = requests.get(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
 
         return response.json()
 
-    def list_dir(self, path):
+    def list_dir(self, path, **kwargs):
         """
         Get a list of file_status for all files and directories
         inside an HDFS directory
@@ -382,8 +421,13 @@ class PyWebHdfsClient(object):
 
         """
 
-        uri = self._create_uri(path, operations.LISTSTATUS)
-        response = requests.get(uri, allow_redirects=True)
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.LISTSTATUS, **optional_args)
+        response = requests.get(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
