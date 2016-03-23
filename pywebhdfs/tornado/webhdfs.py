@@ -493,7 +493,7 @@ class PyWebHdfsClient(object):
         optional_args['owner'] = owner
         optional_args['group'] = group
         uri = self._create_uri(path, operations.SETOWNER, **optional_args)
-        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers)
+        request = httpclient.HTTPRequest(uri, method='PUT', follow_redirects=True, headers=headers)
         response = yield self.http_client.fetch(request)
 
         if not response.status_code == httplib.OK:

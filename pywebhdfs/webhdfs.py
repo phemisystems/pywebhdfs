@@ -453,7 +453,7 @@ class PyWebHdfsClient(object):
         optional_args['owner'] = owner
         optional_args['group'] = group
         uri = self._create_uri(path, operations.SETOWNER, **optional_args)
-        response = requests.get(uri, allow_redirects=True, headers=headers)
+        response = requests.put(uri, allow_redirects=True, headers=headers)
 
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
