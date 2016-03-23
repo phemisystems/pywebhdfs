@@ -499,7 +499,7 @@ class PyWebHdfsClient(object):
         if not response.status_code == httplib.OK:
             _raise_pywebhdfs_exception(response.status_code, response.content)
 
-        raise Return(json.loads(response.body))
+        raise Return(True)
 
     def _create_uri(self, path, operation, **kwargs):
         """
