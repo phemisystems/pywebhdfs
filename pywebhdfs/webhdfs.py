@@ -434,6 +434,32 @@ class PyWebHdfsClient(object):
 
         return response.json()
 
+    def set_owner(self, path, owner, group, **kwargs):
+        """
+        Set the owner and group on a path
+
+        :param path: the HDFS file path without a leading '/'
+        :param owner: owner name
+        :param group: group name
+        :return: JSON response
+
+        """
+
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+
+        optional_args = kwargs
+        optional_args['owner'] = owner
+        optional_args['group'] = group
+        uri = self._create_uri(path, operations.SETOWNER, **optional_args)
+        response = requests.get(uri, allow_redirects=True, headers=headers)
+
+        if not response.status_code == httplib.OK:
+            _raise_pywebhdfs_exception(response.status_code, response.content)
+
+        return response.json()
+
     def _create_uri(self, path, operation, **kwargs):
         """
         internal function used to construct the WebHDFS request uri based on
