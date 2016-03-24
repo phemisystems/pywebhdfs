@@ -32,6 +32,7 @@ class PyWebHdfsClient(object):
         self.port = port
         self.user_name = user_name
         self.krb_instance = krb_instance
+        self.krb_primary = kwargs.pop('krb_primary', 'HTTP')
 
         # create base uri to be used in request operations
         self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
@@ -81,7 +82,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         # make the initial CREATE call to the HDFS namenode
         optional_args = kwargs
@@ -106,7 +107,7 @@ class PyWebHdfsClient(object):
         # NOTE! We need to acquire a new ticket otherwise Kerberos will suspect a replay
         # and reject our next request
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
         request = httpclient.HTTPRequest(uri, method='PUT', body=file_data, headers=headers)
         response = yield self.http_client.fetch(request)
 
@@ -151,7 +152,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         # make the initial APPEND call to the HDFS namenode
         optional_args = kwargs
@@ -176,7 +177,7 @@ class PyWebHdfsClient(object):
         # NOTE! We need to acquire a new ticket otherwise Kerberos will suspect a replay
         # and reject our next request
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
         request = httpclient.HTTPRequest(
             uri, method='POST', body=file_data, headers=headers)
         response = yield self.http_client.fetch(request)
@@ -214,7 +215,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.OPEN, **optional_args)
@@ -253,7 +254,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.MKDIRS, **optional_args)
@@ -289,7 +290,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.RENAME,
@@ -332,7 +333,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.DELETE, recursive=recursive, **optional_args)
@@ -398,7 +399,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.GETFILESTATUS, **optional_args)
@@ -461,7 +462,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.LISTSTATUS, **optional_args)
@@ -487,7 +488,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         optional_args['owner'] = owner

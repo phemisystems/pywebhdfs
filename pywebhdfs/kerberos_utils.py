@@ -165,17 +165,19 @@ class KerberosContextManager(object):
 
         return True, ""
 
-    def acquire_kerberos_ticket(self):
+    def acquire_kerberos_ticket(self, primary, service):
         """
         Acquire a new Kerberos service ticket using the TGT in the client's default ccache. This
         ticket is used to communicate with the service directly and must be included in the header
         of the request.
 
+        :param primary: the Kerberos primary part of the principal
+        :param service: the Kerberos service part of the principal
         :return: header field to be included in the service request.
         """
         self.refresh_kerberos_ccache()
 
-        krb_server = 'HTTP@{0}'.format(self.krb_conn_settings['server'])
+        krb_server = '{0}/{1}@{2}'.format(primary, service, self.krb_conn_settings['realm'])
         _, krb_context = kerberos.authGSSClientInit(service=krb_server,
                                                     principal=self.krb_conn_settings['principal'])
 
