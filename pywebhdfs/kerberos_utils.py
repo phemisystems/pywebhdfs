@@ -177,7 +177,7 @@ class KerberosContextManager(object):
         """
         self.refresh_kerberos_ccache()
 
-        krb_server = '{0}/{1}@{2}'.format(primary, service, self.krb_conn_settings['realm'])
+        krb_server = '{0}@{1}'.format(primary, service)
         _, krb_context = kerberos.authGSSClientInit(service=krb_server,
                                                     principal=self.krb_conn_settings['principal'])
 
