@@ -14,7 +14,7 @@ class PyWebHdfsClient(object):
     >>> from pywebhdfs.webhdfs import PyWebHdfsClient
     """
 
-    def __init__(self, host='localhost', port='50070', user_name=None, krb_instance=None):
+    def __init__(self, host='localhost', port='50070', user_name=None, krb_instance=None, **kwargs):
         """
         Create a new client for interacting with WebHDFS
 
@@ -29,6 +29,7 @@ class PyWebHdfsClient(object):
         self.port = port
         self.user_name = user_name
         self.krb_instance = krb_instance
+        self.krb_primary = kwargs.pop('krb_primary', 'HTTP')
 
         # create base uri to be used in request operations
         self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
@@ -74,7 +75,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         # make the initial CREATE call to the HDFS namenode
         optional_args = kwargs
@@ -93,7 +94,7 @@ class PyWebHdfsClient(object):
         # NOTE! We need to acquire a new ticket otherwise Kerberos will suspect a replay
         # and reject our next request
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
         response = requests.put(uri, data=file_data, headers=headers)
 
         if not response.status_code == httplib.CREATED:
@@ -136,7 +137,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         # make the initial APPEND call to the HDFS namenode
         optional_args = kwargs
@@ -155,7 +156,7 @@ class PyWebHdfsClient(object):
         # NOTE! We need to acquire a new ticket otherwise Kerberos will suspect a replay
         # and reject our next request
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
         response = requests.post(uri, data=file_data, headers=headers)
 
         if not response.status_code == httplib.OK:
@@ -190,7 +191,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.OPEN, **optional_args)
@@ -227,7 +228,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.MKDIRS, **optional_args)
@@ -260,7 +261,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.RENAME,
@@ -299,7 +300,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.DELETE, recursive=recursive, **optional_args)
@@ -362,7 +363,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.GETFILESTATUS, **optional_args)
@@ -423,7 +424,7 @@ class PyWebHdfsClient(object):
 
         headers = dict()
         if self.krb_instance:
-            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket()
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.LISTSTATUS, **optional_args)
@@ -433,6 +434,32 @@ class PyWebHdfsClient(object):
             _raise_pywebhdfs_exception(response.status_code, response.content)
 
         return response.json()
+
+    def set_owner(self, path, owner, group, **kwargs):
+        """
+        Set the owner and group on a path
+
+        :param path: the HDFS file path without a leading '/'
+        :param owner: owner name
+        :param group: group name
+        :return: JSON response
+
+        """
+
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
+
+        optional_args = kwargs
+        optional_args['owner'] = owner
+        optional_args['group'] = group
+        uri = self._create_uri(path, operations.SETOWNER, **optional_args)
+        response = requests.put(uri, allow_redirects=True, headers=headers)
+
+        if not response.status_code == httplib.OK:
+            _raise_pywebhdfs_exception(response.status_code, response.content)
+
+        return True
 
     def _create_uri(self, path, operation, **kwargs):
         """
