@@ -33,6 +33,7 @@ class PyWebHdfsClient(object):
         self.user_name = user_name
         self.krb_instance = krb_instance
         self.krb_primary = kwargs.pop('krb_primary', 'HTTP')
+        self.request_options = self._pop_request_options(kwargs)
 
         # create base uri to be used in request operations
         self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
@@ -40,6 +41,13 @@ class PyWebHdfsClient(object):
 
         # create our asynchronous client
         self.http_client = httpclient.AsyncHTTPClient()
+
+    @staticmethod
+    def _pop_request_options(kwargs):
+        return dict(
+            connect_timeout=kwargs.pop('connect_timeout', None),
+            request_timeout=kwargs.pop('request_timeout', None)
+        )
 
     @coroutine
     def create_file(self, path, file_data, **kwargs):
@@ -88,7 +96,7 @@ class PyWebHdfsClient(object):
         optional_args = kwargs
         uri = self._create_uri(path, operations.CREATE, **optional_args)
         request = httpclient.HTTPRequest(
-            uri, method='PUT', follow_redirects=False, body='', headers=headers)
+            uri, method='PUT', follow_redirects=False, body='', headers=headers, **self.request_options)
         # we are expecting a temporary redirect exception
         try:
             init_response = yield self.http_client.fetch(request)
@@ -108,7 +116,7 @@ class PyWebHdfsClient(object):
         # and reject our next request
         if self.krb_instance:
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
-        request = httpclient.HTTPRequest(uri, method='PUT', body=file_data, headers=headers)
+        request = httpclient.HTTPRequest(uri, method='PUT', body=file_data, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.CREATED:
@@ -158,7 +166,7 @@ class PyWebHdfsClient(object):
         optional_args = kwargs
         uri = self._create_uri(path, operations.APPEND, **optional_args)
         request = httpclient.HTTPRequest(
-            uri, method='POST', follow_redirects=False, body='', headers=headers)
+            uri, method='POST', follow_redirects=False, body='', headers=headers, **self.request_options)
         # we are expecting a temporary redirect here
         try:
             init_response = yield self.http_client.fetch(request)
@@ -178,8 +186,7 @@ class PyWebHdfsClient(object):
         # and reject our next request
         if self.krb_instance:
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
-        request = httpclient.HTTPRequest(
-            uri, method='POST', body=file_data, headers=headers)
+        request = httpclient.HTTPRequest(uri, method='POST', body=file_data, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -219,8 +226,7 @@ class PyWebHdfsClient(object):
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.OPEN, **optional_args)
-
-        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers)
+        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -260,7 +266,7 @@ class PyWebHdfsClient(object):
         uri = self._create_uri(path, operations.MKDIRS, **optional_args)
 
         request = httpclient.HTTPRequest(
-            uri, method='PUT', follow_redirects=True, body='', headers=headers)
+            uri, method='PUT', follow_redirects=True, body='', headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -298,7 +304,7 @@ class PyWebHdfsClient(object):
                                **optional_args)
 
         request = httpclient.HTTPRequest(
-            uri, method='PUT', follow_redirects=True, body='', headers=headers)
+            uri, method='PUT', follow_redirects=True, body='', headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -338,7 +344,7 @@ class PyWebHdfsClient(object):
         optional_args = kwargs
         uri = self._create_uri(path, operations.DELETE, recursive=recursive, **optional_args)
         request = httpclient.HTTPRequest(
-            uri, method='DELETE', follow_redirects=True, headers=headers)
+            uri, method='DELETE', follow_redirects=True, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -403,7 +409,8 @@ class PyWebHdfsClient(object):
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.GETFILESTATUS, **optional_args)
-        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers)
+
+        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -466,7 +473,7 @@ class PyWebHdfsClient(object):
 
         optional_args = kwargs
         uri = self._create_uri(path, operations.LISTSTATUS, **optional_args)
-        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers)
+        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
@@ -494,7 +501,8 @@ class PyWebHdfsClient(object):
         optional_args['owner'] = owner
         optional_args['group'] = group
         uri = self._create_uri(path, operations.SETOWNER, **optional_args)
-        request = httpclient.HTTPRequest(uri, method='PUT', follow_redirects=True, headers=headers)
+        request = httpclient.HTTPRequest(uri, method='PUT', follow_redirects=True, headers=headers,
+                                         **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.status_code == httplib.OK:
