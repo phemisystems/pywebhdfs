@@ -510,6 +510,22 @@ class PyWebHdfsClient(object):
 
         raise Return(True)
 
+    @coroutine
+    def get_acl_status(self, path, **kwargs):
+        headers = dict()
+        if self.krb_instance:
+            headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
+
+        optional_args = kwargs
+        uri = self._create_uri(path, operations.GETACLSTATUS, **optional_args)
+        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers)
+        response = yield self.http_client.fetch(request)
+
+        if not response.code == httplib.OK:
+            _raise_pywebhdfs_exception(response.code, response.body)
+
+        raise Return(json.loads(response.body))
+
     def _create_uri(self, path, operation, **kwargs):
         """
         internal function used to construct the WebHDFS request uri based on

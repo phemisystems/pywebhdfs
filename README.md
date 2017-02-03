@@ -16,6 +16,7 @@ The initial release provides for basic WebHDFS file and directory operations inc
 6.  Delete a File/Directory
 7.  Status of a File/Directory
 8.  List a Directory
+9.  ACL Status of a File/Directory
 
 The documentation for the Hadoop WebHDFS REST API can be found at [http://hadoop.apache.org/docs/r1.0.4/webhdfs.html](http://hadoop.apache.org/docs/r1.0.4/webhdfs.html)
 
