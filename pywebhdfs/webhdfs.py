@@ -14,13 +14,18 @@ class PyWebHdfsClient(object):
     >>> from pywebhdfs.webhdfs import PyWebHdfsClient
     """
 
-    def __init__(self, host='localhost', port='50070', user_name=None, krb_instance=None, **kwargs):
+    def __init__(
+            self, host='localhost', port='50070', user_name=None,
+            krb_instance=None, base_uri_pattern='http://{host}:{port}/webhdfs/v1/',
+            **kwargs):
         """
         Create a new client for interacting with WebHDFS
 
         :param host: the ip address or hostname of the HDFS namenode
         :param port: the port number for WebHDFS on the namenode
         :param user_name: WebHDFS user.name used for authentication
+        :param base_uri_pattern: format string for base webhdfs URI
+
 
         >>> hdfs = PyWebHdfsClient(host='host',port='50070', user_name='hdfs')
         """
@@ -32,8 +37,7 @@ class PyWebHdfsClient(object):
         self.krb_primary = kwargs.pop('krb_primary', 'HTTP')
 
         # create base uri to be used in request operations
-        self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
-            host=self.host, port=self.port)
+        self.base_uri = base_uri_pattern.format(host=host, port=port)
 
     def create_file(self, path, file_data, **kwargs):
         """

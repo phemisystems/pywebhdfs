@@ -17,13 +17,20 @@ class PyWebHdfsClient(object):
     >>> from pywebhdfs.tornado.webhdfs import PyWebHdfsClient
     """
 
-    def __init__(self, host='localhost', port='50070', user_name=None, krb_instance=None, **kwargs):
+    def __init__(
+            self, host='localhost', port='50070', user_name=None,
+            krb_instance=None, base_uri_pattern='http://{host}:{port}/webhdfs/v1/',
+            ca_trust_bundle='/etc/ssl/certs/ca-certificates.crt', **kwargs):
         """
         Create a new client for interacting with WebHDFS
 
         :param host: the ip address or hostname of the HDFS namenode
         :param port: the port number for WebHDFS on the namenode
         :param user_name: WebHDFS user.name used for authentication
+        :param base_uri_pattern: format string for base webhdfs URI
+        :param cert_store: bundle of trusted certificates to use when making https
+        requests to WebHDFS. This bundle must include the namenode and datanode certs if
+        SSL is enabled for HDFS
 
         >>> hdfs = PyWebHdfsClient(host='host',port='50070', user_name='hdfs')
         """
@@ -34,10 +41,10 @@ class PyWebHdfsClient(object):
         self.krb_instance = krb_instance
         self.krb_primary = kwargs.pop('krb_primary', 'HTTP')
         self.request_options = self._pop_request_options(kwargs)
+        self.request_options['ca_certs'] = ca_trust_bundle
 
         # create base uri to be used in request operations
-        self.base_uri = 'http://{host}:{port}/webhdfs/v1/'.format(
-            host=self.host, port=self.port)
+        self.base_uri = base_uri_pattern.format(host=self.host, port=self.port)
 
         # create our asynchronous client
         self.http_client = httpclient.AsyncHTTPClient()
