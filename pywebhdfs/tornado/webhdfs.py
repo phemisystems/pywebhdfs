@@ -524,8 +524,8 @@ class PyWebHdfsClient(object):
             headers['Authorization'] = self.krb_instance.acquire_kerberos_ticket(self.krb_primary, self.host)
 
         optional_args = kwargs
-        uri = self._create_uri(path, operations.GETACLSTATUS, **optional_args)
-        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers)
+        uri = self._create_uri(path, operations.GETACLSTATUS, **optional_args)        
+        request = httpclient.HTTPRequest(uri, follow_redirects=True, headers=headers, **self.request_options)
         response = yield self.http_client.fetch(request)
 
         if not response.code == httplib.OK:
